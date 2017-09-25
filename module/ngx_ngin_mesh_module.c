@@ -132,14 +132,11 @@ static char * ngx_ngin_mesh_config_handler(ngx_conf_t *cf, ngx_command_t *cmd, v
 static ngx_int_t ngx_stream_nginmesh_handler(ngx_stream_session_t *s)
 {
 
-    // u_char          *p;
-    struct sockaddr    org_src_addr;
+    const char               *val;
+    struct sockaddr_storage    org_src_addr;
     socklen_t  org_src_addr_len;
     ngx_connection_t                 *c;
 
-
-    u_char     text[NGX_SOCKADDR_STRLEN];
-    int        len;
 
     //ngx_stream_nginmesh_srv_conf_t  *nscf;
 
@@ -149,22 +146,32 @@ static ngx_int_t ngx_stream_nginmesh_handler(ngx_stream_session_t *s)
 
     c = s->connection;
 
+  //  len = ngx_sock_ntop(c->sockaddr, sizeof(struct sockaddr_in),text,c->socklen,1);
+    ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "module original ip address: %*s",c->addr_text.len,c->addr_text.data);
+
 
     ngx_memzero(&org_src_addr, sizeof(struct sockaddr));
      org_src_addr_len =  sizeof(struct sockaddr);
-    if(getsockopt ( c->listening->fd, SOL_IP, SO_ORIGINAL_DST, &org_src_addr,&org_src_addr_len) == -1) {
+    if(getsockopt ( c->fd, SOL_IP, SO_ORIGINAL_DST, &org_src_addr,&org_src_addr_len) == -1) {
          ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_socket_errno,
                                       "failed to get original ip address");
 
     } else {
 
+        ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "ip address length %d",org_src_addr_len);
 
-        len = ngx_sock_ntop(&org_src_addr, sizeof(struct sockaddr_in),text,NGX_SOCKADDR_STRLEN,1);
-        ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "original ip address: %*s",text,len);
+        if(org_src_addr.ss_family == AF_INET )  {
+               ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "address is is INET format");
+               struct sockaddr_in *addr_in = (struct sockaddr_in *)&org_src_addr;
+               char *s = inet_ntoa(addr_in->sin_addr);
+            //  len = ngx_sock_ntop((struct sockaddr *)&org_src_addr,org_src_addr_len,text,NGX_SOCKADDR_STRLEN,1);
+              ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "founded original ip address: %s",s);
+        } else {
+
+             ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "address is is not INET format");
+        }
 
 
-       // res->data = p;
-       // res->len = len;
     }
 
     return NGX_OK;
