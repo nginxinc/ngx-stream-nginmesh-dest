@@ -2,6 +2,7 @@ const net = require('net');
 
 
 const port = process.argv[2] || 8000;
+const destFlag = process.argv[3];
 
 console.log('listening to port',port);
 
@@ -26,7 +27,9 @@ function handleConnection(conn) {
     function onConnData(d) {
         console.log('connection data from %s: %j', remoteAddress, d);
         conn.write("hello");
-        connectToDest(DestIp);
+        if(destFlag === 'dest') {
+            connectToDest(DestIp);
+        }
     }
 
     function onConnClose() {
