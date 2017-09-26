@@ -23,13 +23,14 @@ typedef struct {
 
 typedef struct {
     ngx_str_t       dest;
-    ngx_pool_t     *pool;
+    ngx_str_t       port;
+    ngx_pool_t      *pool;
 } ngx_stream_nginmesh_ctx_t;
 
 
 
 static ngx_int_t ngx_stream_nginmesh_handler(ngx_stream_session_t *s);
-static ngx_int_t ngx_stream_nginmesh_variable(ngx_stream_session_t *s,ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_nginmesh_dest_variable(ngx_stream_session_t *s,ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_ngin_add_variables(ngx_conf_t *cf);
 static ngx_int_t ngx_stream_ngin_mesh_init(ngx_conf_t *cf);
 static void *ngx_stream_nginmesh_create_srv_conf(ngx_conf_t *cf);
@@ -44,7 +45,7 @@ static char *ngx_stream_nginmesh_merge_srv_conf(ngx_conf_t *cf, void *parent, vo
 static ngx_command_t ngx_stream_mesh_commands[] = {
 
     {
-      ngx_string("ngin_mesh"),
+      ngx_string("nginmesh_dest"),
       NGX_STREAM_MAIN_CONF | NGX_STREAM_SRV_CONF | NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,     // do custom config
       NGX_STREAM_SRV_CONF_OFFSET,
@@ -87,8 +88,8 @@ ngx_module_t ngx_ngin_mesh_module = {
 // list of variables to add
 static ngx_stream_variable_t  ngx_stream_nginmesh_vars[] = {
 
-    { ngx_string("nginmesh_dest_ip"), NULL,
-      ngx_stream_nginmesh_variable, 0, 0, 0 },
+    { ngx_string("nginmesh_dest"), NULL,
+      ngx_stream_nginmesh_dest_variable, 0, 0, 0 },
     ngx_stream_null_variable
 };
 
@@ -134,7 +135,8 @@ static ngx_int_t ngx_stream_nginmesh_handler(ngx_stream_session_t *s)
     struct sockaddr_storage             org_src_addr;
     socklen_t                           org_src_addr_len;
     ngx_connection_t                    *c;
-    ngx_stream_nginmesh_ctx_t        *ctx;
+    ngx_stream_nginmesh_ctx_t           *ctx;
+    char                                dest_text[30];  // 4*4 + 5 + 1
 
 
 
@@ -193,14 +195,22 @@ static ngx_int_t ngx_stream_nginmesh_handler(ngx_stream_session_t *s)
            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "address is is INET format");
            struct sockaddr_in *addr_in = (struct sockaddr_in *)&org_src_addr;
            char *s = inet_ntoa(addr_in->sin_addr);
+           int port = ntohs(addr_in->sin_port);
            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "founded dest ip address: %s",s);
+           ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "founded dest port address: %d",port);
 
-           size_t size = ngx_strlen(s);
-           ctx->dest.data = ngx_pnalloc(ctx->pool, size);
-           ctx->dest.len = size;
-           ngx_memcpy(ctx->dest.data,s,size);
+           ngx_memzero(dest_text,30);
+           sprintf(dest_text,"%s:%d",s,port);
+           ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "combined text: %s",dest_text);
+           size_t dest_str_size = ngx_strlen(dest_text);
 
-           ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "ctx  var ngin %*s",ctx->dest.len,ctx->dest.data);
+
+           ctx->dest.data = ngx_pnalloc(ctx->pool, dest_str_size);
+           ctx->dest.len = dest_str_size;
+           ngx_memcpy(ctx->dest.data,dest_text,dest_str_size);
+
+           ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "ctx dest  var %*s",ctx->dest.len,ctx->dest.data);
+
 
            
         } else {
@@ -217,13 +227,10 @@ static ngx_int_t ngx_stream_nginmesh_handler(ngx_stream_session_t *s)
 }
 
 // assign variable from ctx
-static ngx_int_t ngx_stream_nginmesh_variable(ngx_stream_session_t *s,
+static ngx_int_t ngx_stream_nginmesh_dest_variable(ngx_stream_session_t *s,
     ngx_variable_value_t *v, uintptr_t data)
 {
     ngx_stream_nginmesh_ctx_t  *ctx;
-
-    ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "nginmesh variable assigned");
-
 
     ctx = ngx_stream_get_module_ctx(s, ngx_ngin_mesh_module);
 
@@ -238,8 +245,7 @@ static ngx_int_t ngx_stream_nginmesh_variable(ngx_stream_session_t *s,
     v->len = ctx->dest.len;
     v->data = ctx->dest.data;
 
-   ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "assigned var ngin %*s",v->len,v->data);
-
+    ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "set var nginmesh_dest %*s",v->len,v->data);
 
     return NGX_OK;
 }
@@ -251,7 +257,7 @@ static ngx_int_t ngx_stream_ngin_add_variables(ngx_conf_t *cf)
 
 
     for (v = ngx_stream_nginmesh_vars; v->name.len; v++) {
-        ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "ngin mesh var initialized");
+        ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "ngin mesh var initialized: %*s",v->name.len,v->name.data);
         var = ngx_stream_add_variable(cf, &v->name, v->flags);
         if (var == NULL) {
             return NGX_ERROR;
