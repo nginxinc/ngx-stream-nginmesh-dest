@@ -1,5 +1,5 @@
 const net = require('net');
-
+const http = require('http');
 
 const port = process.argv[2] || 8000;
 const destFlag = process.argv[3];
@@ -7,6 +7,7 @@ const destFlag = process.argv[3];
 console.log('listening to port',port);
 
 const DestIp = '8.8.8.8';
+const localService = "http://localhost:5000";
 
 const server = net.createServer();
 server.on('connection', handleConnection);
@@ -24,9 +25,11 @@ function handleConnection(conn) {
     conn.once('close', onConnClose);
     conn.on('error', onConnError);
 
-    function onConnData(d) {
+    async function onConnData(d) {
         console.log('connection data from %s: %j', remoteAddress, d);
-        conn.write("hello");
+        const result = await makeHttpCall(localService);
+        console.log('received: local http service'+result);
+        conn.write(result);
         if(destFlag === 'dest') {
             connectToDest(DestIp);
         }
@@ -42,7 +45,7 @@ function handleConnection(conn) {
 }
 
 
-
+// make http request
 function connectToDest(destIp) {
     console.log(`trying to connect to ${destIp}`);
 
@@ -62,4 +65,31 @@ function connectToDest(destIp) {
         console.log(`connectio to ${destIp} closed`);
     });
 }
+
+
+// make http call
+function makeHttpCall(url)  {
+
+    return new Promise((resolve,reject) => {
+        console.log('sending out to '+url);
+        http.get(url, res => {
+            res.setEncoding("utf8");
+            let body = "";
+            res.on("data", data => {
+                console.log('received body:'+data);
+                body += data;
+            });
+            res.on("end", () => {
+                console.log('received end');
+                resolve(body);
+            });
+            res.on("error",(err)=>{
+                reject(err);
+            });
+        });
+    });
+
+
+}
+
 

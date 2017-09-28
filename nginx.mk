@@ -90,7 +90,7 @@ linux-copy-restart:
 	rm -rf /etc/nginx/conf.d/*
 	cp config/mesh.conf /etc/nginx/conf.d
 	cp ${MODULE_SO_BIN} /etc/nginx/modules
-#	node tests/services/hello.js 8000 > u1.log 2> u1.err &
+	node tests/services/hello.js 9100 > u1.log 2> u1.err &
 	node tests/services/tcp-invoke.js 9000 dest > u1.log 2> u1.err &
 	tests/prepare_proxy.sh -p 15001 -u ${DOCKER_USER} &
 	nginx -s reload
