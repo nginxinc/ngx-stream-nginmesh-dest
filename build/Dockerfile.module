@@ -1,0 +1,7 @@
+FROM nginmesh/ngx_stream_nginmesh_dest_module-base:latest
+
+MAINTAINER Sehyo Chang "sehyo@nginx.com"
+
+ADD ./src /src/src
+ADD ./module /src/module
+RUN cd /src;make nginx-module

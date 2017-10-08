@@ -1,5 +1,5 @@
 [root]
-name = "nginmesh"
+name = "nginmesh-dest"
 version = "0.0.1"
 dependencies = [
  "futures 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -1,10 +1,10 @@
-ngx_addon_name=ngx_ngin_mesh_module
+ngx_addon_name=ngx_stream_nginmesh_dest_module
 
 ngx_module_type=STREAM
-ngx_module_name=ngx_ngin_mesh_module
-ngx_module_srcs="$ngx_addon_dir/ngx_ngin_mesh_module.c"
+ngx_module_name=ngx_stream_nginmesh_dest_module
+ngx_module_srcs="$ngx_addon_dir/ngx_stream_nginmesh_dest_module.c"
 ngx_module_deps="cargo"
-ngx_module_libs="$ngx_addon_dir/../target/debug/libnginmesh.a"
+ngx_module_libs="$ngx_addon_dir/../target/debug/libnginmesh_dest.a"
 
 
 . auto/module

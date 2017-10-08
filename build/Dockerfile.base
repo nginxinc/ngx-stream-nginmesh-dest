@@ -1,0 +1,18 @@
+FROM nginmesh/ngx-rust-tool:1.20.0-C
+
+MAINTAINER Sehyo Chang "sehyo@nginx.com"
+
+
+RUN mkdir /src
+ADD ./Cargo.toml /src
+ADD ./Cargo.lock /src
+ADD ./Makefile /src
+ADD ./nginx.mk /src
+RUN mkdir /src/src
+ADD ./src /src/src
+ADD ./module /src/module
+RUN mkdir /src/build
+ADD ./build /src/build
+RUN cd /src;make setup
+RUN cd /src;make nginx-setup
+RUN cd /src;cargo build

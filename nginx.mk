@@ -1,11 +1,16 @@
 NGINX_VER = 1.13.5
 UNAME_S := $(shell uname -s)
+GIT_COMMIT=$(shell git rev-parse --short HEAD)
+NGX_DEBUG="--with-debug"
+export MODULE_DIR=${PWD}
+DOCKER_USER=101
+RUST_COMPILER_TAG = 1.20.0-B
+NGINX_TAG=1.13.5
 NGX_MODULES = --with-compat  --with-threads --with-http_addition_module \
      --with-http_auth_request_module   --with-http_gunzip_module --with-http_gzip_static_module  \
      --with-http_random_index_module --with-http_realip_module --with-http_secure_link_module \
      --with-http_slice_module  --with-http_stub_status_module --with-http_sub_module \
      --with-stream --with-stream_realip_module --with-stream_ssl_preread_module
-
 ifeq ($(UNAME_S),Linux)
     NGINX_SRC += nginx-linux
     NGX_OPT= $(NGX_MODULES) \
@@ -17,19 +22,29 @@ ifeq ($(UNAME_S),Darwin)
     NGINX_SRC += nginx-darwin
     NGX_OPT= $(NGX_MODULES)
 endif
-NGX_DEBUG="--with-debug"
-export ROOT_DIR=$(shell dirname $$PWD)
-export MODULE_DIR=${PWD}
-DOCKER_USER=101
-RUST_COMPILER_TAG = 1.20.0
-RUST_TOOL = nginmesh/ngx-rust-tool:${RUST_COMPILER_TAG}
+DOCKER_MODULE_IMAGE = nginmesh/${MODULE_NAME}
+DOCKER_MODULE_BASE_IMAGE = nginmesh/${MODULE_NAME}-base
+DOCKER_RUST_IMAGE = nginmesh/ngx-rust-tool:${RUST_COMPILER_TAG}
+DOCKER_NGIX_IMAGE = nginmesh/nginx-dev:${NGINX_TAG}
 MODULE_SO_DIR=nginx/nginx-linux/objs
 MODULE_SO_BIN=${MODULE_SO_DIR}/${MODULE_NAME}.so
-DOCKER_TOOL=docker run -it --rm -v ${ROOT_DIR}:/src -w /src/${MODULE_PROJ_NAME} ${RUST_TOOL}
+MODULE_SO_HOST=config/modules/${MODULE_NAME}.so
+DOCKER_BUILD_TOOL=docker run -it --rm -v ${ROOT_DIR}:/src -w /src/${MODULE_PROJ_NAME} ${DOCKER_RUST_IMAGE}
+DOCKER_NGINX_TOOL=docker run -it --rm -v ${ROOT_DIR}:/src -w /src/${MODULE_PROJ_NAME} ${DOCKER_NGIX_IMAGE}
 DOCKER_NGINX_NAME=nginx-test
 DOCKER_NGINX_EXEC=docker exec -it ${DOCKER_NGINX_NAME}
 DOCKER_NGINX_EXECD=docker exec -d ${DOCKER_NGINX_NAME}
-DOCKER_NGINX_DAEMON=docker run -d -p 8000:8000 --privileged --name ${DOCKER_NGINX_NAME} -v ${ROOT_DIR}:/src -w /src/${MODULE_PROJ_NAME} ${RUST_TOOL}
+DOCKER_NGINX_DAEMON=docker run -d -p 8000:8000  --privileged --name  ${DOCKER_NGINX_NAME} \
+	-v ${MODULE_DIR}/config/modules:/etc/nginx/modules \
+	-v ${MODULE_DIR}:/src  -w /src   ${DOCKER_NGIX_IMAGE}
+
+
+# this need to be invoked before any build steps
+# set up dependencies
+setup:
+	rm -rf build/crates
+	mkdir build/crates
+	tar zxf build/vendor/ngx-rust-tar.zip -C build/crates
 
 nginx-build:
 	cd nginx/${NGINX_SRC}; \
@@ -40,7 +55,6 @@ nginx-build:
 
 setup-nginx:
 	mkdir -p nginx
-
 
 
 nginx-source:	setup-nginx
@@ -66,55 +80,68 @@ nginx-module:
 	make modules;
 
 
-# copy test configuration and restart
-nginx-test-restart:
-	docker exec -it ${DOCKER_NGINX_NAME}
-
-
-
-
-# need to run inside container
-linux-shell:
-	${DOCKER_TOOL} /bin/bash
-
-
-
-linux-setup:
-	${DOCKER_TOOL} make nginx-setup
-
-linux-module:
-	${DOCKER_TOOL} make nginx-module
-
-linux-copy-restart:
+# setup nginx container for testing
+# copies the configuration and modules
+# start test services
+test-nginx-setup:
 	cp config/nginx.conf /etc/nginx
 	rm -rf /etc/nginx/conf.d/*
-	cp config/mesh.conf /etc/nginx/conf.d
-	cp ${MODULE_SO_BIN} /etc/nginx/modules
-	node tests/services/hello.js 9100 > u1.log 2> u1.err &
-	node tests/services/tcp-invoke.js 9000 dest > u1.log 2> u1.err &
+	cp config/conf.d/* /etc/nginx/conf.d
+	node tests/services/http.js 9100 > u1.log 2> u1.err &
+	node tests/services/tcp-invoke.js 9000 dest > t1.log 2> t1.err
 	tests/prepare_proxy.sh -p 15001 -u ${DOCKER_USER} &
 	nginx -s reload
 
 
-linux-test-stop:
-	docker stop ${DOCKER_NGINX_NAME} | xargs docker rm
+# remove nginx container
+test-nginx-clean:
+	docker rm -f  ${DOCKER_NGINX_NAME} || true
 
 
-linux-test-start:   linux-module linux-test-stop
+test-nginx-only: test-nginx-clean
 	$(DOCKER_NGINX_DAEMON)
-	$(DOCKER_NGINX_EXECD) make linux-copy-restart
-	sleep 2
-
-linux-test-run:
-	$(DOCKER_NGINX_EXEC) cargo test
+	$(DOCKER_NGINX_EXECD) make test-nginx-setup > make.out
+	sleep 1
 
 
-linux-test: linux-test-start linux-test-run
-	docker stop ${DOCKER_NGINX_NAME} | xargs docker rm
-
-linux-test-log:
+test-nginx-log:
 	docker logs -f nginx-test
 
-# open tcp connection to nginx in the containner
-linux-test-nc:
+
+test-nginx-full:	build-module test-nginx-only
+
+# invoke http service
+test-tcp:
 	nc localhost 8000
+
+
+copy-module:
+	docker rm -v ngx-copy || true
+	docker create --name ngx-copy ${DOCKER_MODULE_IMAGE}:latest
+	docker cp ngx-copy:/src/${MODULE_SO_BIN} ${MODULE_SO_HOST}
+	docker rm -v ngx-copy
+
+# build module using docker
+# we copy only necessary context to docker daemon (src and module directory)
+build-module-docker:
+	rm -rf build/context
+	mkdir build/context
+	cp build/Dockerfile.module build/context
+	cp -r src build/context
+	cp -r module build/context
+	docker build -f ./build/context/Dockerfile.module -t ${DOCKER_MODULE_IMAGE}:latest ./build/context
+
+# build module and deposit in the module directory
+build-module: build-module-docker copy-module
+
+# build base container image that pre-compiles rust and nginx modules
+build-base:	super_clean
+	docker build -f ./build/Dockerfile.base -t ${DOCKER_MODULE_BASE_IMAGE}:${GIT_COMMIT} .
+	docker tag ${DOCKER_MODULE_BASE_IMAGE}:${GIT_COMMIT} ${DOCKER_MODULE_BASE_IMAGE}:latest
+
+
+# copy dependent modules that must be load locally. they are assume to be checked as peer directory
+# later, they should be clone directly from github repo
+zip-dependent-modules:
+	cd ..;tar -zcvf  ngx-rust-tar.zip --exclude='.git'  --exclude='.idea'  ngx-rust
+	mv ../ngx-rust-tar.zip ./build/vendor

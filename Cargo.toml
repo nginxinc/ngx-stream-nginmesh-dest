@@ -1,5 +1,5 @@
 [package]
-name = "nginmesh"
+name = "nginmesh-dest"
 version = "0.0.1"
 authors = ["Sehyo Chang   sehyo@nginx.com"]
 
@@ -10,7 +10,7 @@ crate-type = ["staticlib","rlib"]
 
 
 [dependencies]
-ngx-rust=  { path = "../ngx-rust" , version = "1.13.5" }
+ngx-rust        =  { path = "./build/crates/ngx-rust" , version = "1.13.5" }
 
 [dev-dependencies]
 futures = "0.1.14"
