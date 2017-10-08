@@ -21,7 +21,4 @@ use ngx_rust::nginx_http::log;
 
 
 #[no_mangle]
-pub extern fn mesh(request: &ngx_http_request_s)  {
-
-
-}
+pub extern "C" fn mesh(request: &ngx_http_request_s) {}

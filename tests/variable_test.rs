@@ -27,7 +27,7 @@ mod tests {
         let work = client.request(req).map(|res| {
             let status = res.status();
             println!("Response: {}", status);
-            assert_eq!(status,StatusCode::Ok);
+            assert_eq!(status, StatusCode::Ok);
 
         });
 
