@@ -5,15 +5,5 @@ include nginx.mk
 
 
 clean:
-	cargo clean
-
-
-
-super_clean: clean
-	rm -rf module/*.so
-	rm -rf build/crate
-	rm -rf build/context
+	rm -rf docker/context
 	rm -rf nginx
-
-test:
-	cargo test -- --nocapture
