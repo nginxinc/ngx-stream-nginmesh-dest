@@ -75,7 +75,7 @@ copy-module:
 # build module using docker
 # we copy only necessary context to docker daemon (src and module directory)
 build-module-docker:
-	docker build -f $(DOCKER_BUILD)/context/Dockerfile.module -t ${DOCKER_MODULE_IMAGE}:latest .
+	docker build -f $(DOCKER_BUILD)/Dockerfile.module -t ${DOCKER_MODULE_IMAGE}:latest .
 
 # build module and deposit in the module directory
 build-module: build-module-docker copy-module
