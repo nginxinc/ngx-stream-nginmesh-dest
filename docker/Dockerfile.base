@@ -1,0 +1,10 @@
+FROM nginmesh/ngx-rust-tool:1.21.0
+
+MAINTAINER Sehyo Chang "sehyo@nginx.com"
+
+
+RUN mkdir /src
+ADD ./Makefile /src
+ADD ./nginx.mk /src
+ADD ./module /src/module
+RUN cd /src;make nginx-setup
