@@ -1,13 +1,13 @@
 /**
- * @file   ngx_http_istio_mixer_module.c
+ * @file   ngx_stream_nginmesh_dest_module.c
  * @author Sehyo Chang <sehyo@nginx.com>
- * @date   Wed Aug 19 2017
+ * @date   Nov 6, 2017
  *
- * @brief  Istio Mixer integration  module for Nginx.
+ * @brief  Nginx stream dest module for Nginx.
  *
  * @section LICENSE
  *
- * Copyright (C) 2011 by Nginx
+ * Copyright (C) 2017 by Nginx
  *
  */
 #include <ngx_config.h>
@@ -70,7 +70,7 @@ static ngx_stream_module_t ngx_stream_mesh_module_ctx = {
 };
 
 /* Module definition. */
-ngx_module_t ngx_ngin_mesh_module = {
+ngx_module_t ngx_stream_nginmesh_dest_module = {
     NGX_MODULE_V1,
     &ngx_stream_mesh_module_ctx, /* module context */
     ngx_stream_mesh_commands, /* module directives */
@@ -145,7 +145,7 @@ static ngx_int_t ngx_stream_nginmesh_handler(ngx_stream_session_t *s)
 	ngx_log_debug(NGX_LOG_DEBUG_STREAM,  s->connection->log, 0,"nginmesh stream handler invoked");
 
 
-    meshcf = ngx_stream_get_module_srv_conf(s, ngx_ngin_mesh_module);
+    meshcf = ngx_stream_get_module_srv_conf(s, ngx_stream_nginmesh_dest_module);
 
     if (!meshcf->enabled) {
         ngx_log_debug(NGX_LOG_DEBUG_STREAM, s->connection->log, 0, "nginmesh not enabled, declined");
@@ -162,7 +162,7 @@ static ngx_int_t ngx_stream_nginmesh_handler(ngx_stream_session_t *s)
         return NGX_AGAIN;
     }
 
-    ctx = ngx_stream_get_module_ctx(s, ngx_ngin_mesh_module);
+    ctx = ngx_stream_get_module_ctx(s, ngx_stream_nginmesh_dest_module);
 
     if (ctx == NULL) {
          ngx_log_debug(NGX_LOG_DEBUG_STREAM, s->connection->log, 0, "nginmesh creating new context");
@@ -171,7 +171,7 @@ static ngx_int_t ngx_stream_nginmesh_handler(ngx_stream_session_t *s)
             return NGX_ERROR;
         }
 
-        ngx_stream_set_ctx(s, ctx, ngx_ngin_mesh_module);
+        ngx_stream_set_ctx(s, ctx, ngx_stream_nginmesh_dest_module);
 
         ctx->pool = c->pool;
     }
@@ -233,7 +233,7 @@ static ngx_int_t ngx_stream_nginmesh_dest_variable(ngx_stream_session_t *s,
 {
     ngx_stream_nginmesh_ctx_t  *ctx;
 
-    ctx = ngx_stream_get_module_ctx(s, ngx_ngin_mesh_module);
+    ctx = ngx_stream_get_module_ctx(s, ngx_stream_nginmesh_dest_module);
 
     if (ctx == NULL) {
         v->not_found = 1;

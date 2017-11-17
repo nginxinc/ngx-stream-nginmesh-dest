@@ -13,7 +13,7 @@ NGX_MODULES = --with-compat  --with-threads --with-http_addition_module \
 ifeq ($(UNAME_S),Linux)
     NGINX_SRC += nginx-linux
     NGX_OPT= $(NGX_MODULES) \
-       --with-file-aio --with-http_ssl_module --with-stream_ssl_module  \
+       --with-file-aio  \
        --with-cc-opt='-g -fstack-protector-strong -Wformat -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -fPIC' \
        --with-ld-opt='-Wl,-Bsymbolic-functions -Wl,-z,relro -Wl,-z,now -Wl,--as-needed -pie'
 endif
@@ -35,7 +35,7 @@ DOCKER_NGINX_NAME=nginx-test
 DOCKER_NGINX_EXEC=docker exec -it ${DOCKER_NGINX_NAME}
 DOCKER_NGINX_EXECD=docker exec -d ${DOCKER_NGINX_NAME}
 DOCKER_NGINX_DAEMON=docker run -d -p 8000:8000  --privileged --name  ${DOCKER_NGINX_NAME} \
-	-v ${MODULE_DIR}/config/modules:/etc/nginx/modules \
+	-v ${MODULE_DIR}/module/release:/etc/nginx/modules \
 	-v ${MODULE_DIR}:/src  -w /src   ${DOCKER_NGIX_IMAGE}
 
 
@@ -65,7 +65,6 @@ nginx-module:
 	strip objs/*.so
 
 
-
 copy-module:
 	docker rm -v ngx-copy || true
 	docker create --name ngx-copy ${DOCKER_MODULE_IMAGE}:latest
@@ -86,17 +85,15 @@ build-base:
 	docker tag ${DOCKER_MODULE_BASE_IMAGE}:${GIT_COMMIT} ${DOCKER_MODULE_BASE_IMAGE}:latest
 
 
+run-module-image:
+	docker run -it --rm  ${DOCKER_MODULE_IMAGE}:latest /bin/bash
+
+
 # setup nginx container for testing
 # copies the configuration and modules
 # start test services
 test-nginx-setup:
-	cp config/nginx.conf /etc/nginx
-	rm -rf /etc/nginx/conf.d/*
-	cp config/conf.d/* /etc/nginx/conf.d
-	node tests/services/http.js 9100 > u1.log 2> u1.err &
-	node tests/services/tcp-invoke.js 9000 dest > t1.log 2> t1.err
-	tests/prepare_proxy.sh -p 15001 -u ${DOCKER_USER} &
-	nginx -s reload
+	test/deploy.sh
 
 
 # remove nginx container
