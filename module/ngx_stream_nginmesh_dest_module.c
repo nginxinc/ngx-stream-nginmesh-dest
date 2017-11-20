@@ -99,7 +99,7 @@ static void *ngx_stream_nginmesh_create_srv_conf(ngx_conf_t *cf)
 {
     ngx_stream_nginmesh_srv_conf_t  *conf;
 
-    ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "nginmesh create serv config");
+    ngx_log_debug(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0, "nginmeshdest create serv config");
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_stream_nginmesh_srv_conf_t));
     if (conf == NULL) {
@@ -115,7 +115,7 @@ static void *ngx_stream_nginmesh_create_srv_conf(ngx_conf_t *cf)
 static char *ngx_stream_nginmesh_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 {
 
-    ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "nginmesh merge serv config");
+    ngx_log_debug(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0, "nginmeshdest merge serv config");
 
     ngx_stream_nginmesh_srv_conf_t *prev = parent;
     ngx_stream_nginmesh_srv_conf_t *conf = child;
