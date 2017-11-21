@@ -1,77 +1,85 @@
-# Nginx Nginmesh Stream Dest IP Module
+# NGINX Destination IP recovery module for stream
 
-This repo implements NGINX modules getting destination IP and port number.
-It is used in context where all outgoing traffic is funnel thru a single port.
-So we need original destination IP and port to route to proper upstream.
-This is used in the Istio proxy configuration.
+This dynamic module recovers original IP address and port number of the destination packet.
+It is used by nginmesh sidecar where all outgoing traffic is redirect to a single port using iptable mechanism
 
-## Usage
+## Dependencies
 
-<TBD>
+This module uses Linux **getsockopt** socket API.  
+The installation uses Docker to build the module binary.
 
-## Check out Nginx Rust Module
+## Compatibility
 
-```bash
-giut clone git@github.com:nginmesh/ngx-rust.git
+* 1.11.x (last tested with 1.13.5)
+
+
+## Synopsis
+
+```nginx
+
+ stream   {
+ 
+	 server {
+	 
+			#  use iptable to capture all outgoing traffic.  see Istio design document
+			listen 15001;
+			
+			# turn on module for this server
+			# original IP destination and port is set to variable $nginmesh_dest
+			# ex: 10.31.242.228:80
+			nginmesh_dest on;
+	
+			# variable can be used in valid config directive
+			proxy_pass $nginmesh_dest;
+		}
+		
+ }	
+
 ```
 
-Rust module needs to be check out at same level as this project.
-Follow instruction in Rust module and configure for each of the target OS.
+## Embedded Variables
+
+The following embedded variables are provided:
+
+* **nginmesh_dest**
+  * Original IP address and port in the format:  <address>:<port>
+
+## Directives
+
+### nginmesh_dest
+
+| -   | - |
+| --- | --- |
+| **Syntax**  | **nginmesh_dest** \<on\|off\> |
+| **Default** | off |
+| **Context** | stream, server |
+
+`Description:` Enables or disables the nginmesh_dest module
+
+
+## Installation
+
+1. Clone the git repository
+
+  ```
+  shell> git clone git@github.com:nginmesh/ngx-stream-nginmesh-dest.git
+  ```
+
+2. Build the dynamic module
+
+  ```
+  shell> make build-base;make build-module
+  ```
+
+  This copies the generated .so file into module/release directory
 
 
 
-## Configure and Build
+## Integration test
 
-Before building, it must be configured for each of the target OS.
-
-### For Linux
-
-To configure:
-
-```bash
-make linux-setup
-```
-
-Generating module:
-
-
-```bash
-make linux-module
-```
-
-Generated module is founded at:
-
-```bash
-ls nginx/nginx-linux/objs/ngx_ngin_mesh_module.so
-```
-
-
-### For Mac
-
-To configure:
-
-```bash
-make ngin-setup
-```
-
-Generating module:
-
-
-```bash
-make ngin-module
-```
-
-
-### Run Integration test using Docker
+This works only on mac.
 
 ```bash
-make linux-test-start
+make test-nginx-only
+make test-tcp
 ```
-
-This will create test docker container to start nginx as if it is running as sidecar
-
-```bash
-make linux-test-nc
-```
-
-This will trigger tcp server in the test container
