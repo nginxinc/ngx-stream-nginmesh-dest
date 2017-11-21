@@ -54,7 +54,7 @@ The following embedded variables are provided:
 | **Default** | off |
 | **Context** | stream, server |
 
-`Description:` Enables or disables the nginmesh_dest..
+`Description:` Enables or disables the nginmesh_dest module
 
 
 ## Installation
