@@ -1,5 +1,8 @@
 # NGINX Destination IP recovery module for stream
 
+# This repository has been archived. There will likely be no further development on the project and security vulnerabilities may be unaddressed.
+
+
 This dynamic module recovers original IP address and port number of the destination packet.
 It is used by nginmesh sidecar where all outgoing traffic is redirect to a single port using iptable mechanism
 
